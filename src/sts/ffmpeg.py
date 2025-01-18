@@ -21,9 +21,9 @@ def cut_scenes(source_path: Path, destination_path: Path, scenes: Range, audio_i
     video = input.video
     audio = input[f'a:{audio_index}']
     vsplits = video.filter_multi_output('split', n)
-    vcuts = [vs.trim(start=start, end=end) for vs, (start, end) in zip(vsplits, scenes)]
+    vcuts = [vs.filter("select", f"between(t,{start},{end})").filter("setpts", "PTS-STARTPTS") for vs, (start, end) in zip(vsplits, scenes)]
     asplits = audio.filter_multi_output('asplit', n)
-    acuts = [asplit.filter('atrim', start=start, end=end) for asplit, (start, end) in zip(asplits, scenes)]
+    acuts = [asplit.filter('aselect', f"between(t,{start},{end})").filter("asetpts", "PTS-STARTPTS") for asplit, (start, end) in zip(asplits, scenes)]
     cuts = itertools.chain.from_iterable(zip(vcuts, acuts))
     out = (
         ffmpeg
