@@ -1,7 +1,11 @@
+import itertools
+import math
 import pathlib
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
+
+from tqdm import tqdm
 
 from . import ffmpeg, subtitles
 from .options import Options, Range
@@ -36,8 +40,23 @@ def main():
     ffmpeg.extract_subtitles(source_video, initial_sub_path, sub_index)
     ranges = subtitles.process_subtitles(initial_sub_path, final_sub_path, options)
     scenes = prepare_ranges(ranges, metadata.duration, options)
-    ffmpeg.cut_scenes(source_video, temp_video, scenes, audio_index)
+    cut_scenes_in_batches(source_video, temp_video, scenes, audio_index)
     ffmpeg.add_subtitles(temp_video, final_sub_path, destination_video)
+
+
+def cut_scenes_in_batches(source_path: Path, destination_path: Path, scenes: Range, audio_index: int):
+    batch_size = math.ceil(math.sqrt(len(scenes)))
+    batches = list(itertools.batched(scenes, batch_size))
+    total = sum(len(b) for b in batches) + len(batches)
+    part_files = []
+    with tqdm(total=total) as pbar:
+        for i, batch in enumerate(batches):
+            part_file = destination_path.parent.joinpath(f"{i}.{destination_path.name}")
+            ffmpeg.cut_scenes(source_path, part_file, batch, audio_index)
+            pbar.update(len(batch))
+            part_files.append(part_file)
+        ffmpeg.concat(part_files, destination_path)
+        pbar.update(len(batches))
 
 
 def prepare_ranges(ranges: Range, duration: float, options: options) -> Range:

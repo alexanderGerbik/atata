@@ -1,6 +1,8 @@
 import itertools
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
+from typing import List
 
 import ffmpeg
 
@@ -13,6 +15,17 @@ class VideoMetaData:
     video_stream_count: int
     audio_stream_count: int
     subtitle_stream_count: int
+
+
+def concat(sources: List[Path], destination: Path):
+    with tempfile.NamedTemporaryFile(suffix=".txt") as temp_file:
+        Path(temp_file.name).write_text("".join(f"file '{s.resolve()}'\n" for s in sources))
+        (
+            ffmpeg.input(temp_file.name, f="concat", safe="0")
+            .output(str(destination), c="copy")
+            .overwrite_output()
+            .run(capture_stdout=True, capture_stderr=True)
+        )
 
 
 def cut_scenes(source_path: Path, destination_path: Path, scenes: Range, audio_index: int):
