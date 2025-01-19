@@ -1,4 +1,4 @@
-from sts import main
+from atata import main
 
 if __name__ == '__main__':
     main()

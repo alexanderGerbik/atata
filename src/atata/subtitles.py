@@ -9,33 +9,16 @@ from pysrt import SubRipTime, SubRipItem
 from .options import Options, Range
 
 
-def process_subtitles(in_file: Path, out_file: Path, debug_sub_path: Path, options: Options) -> Range:
+def process_subtitles(in_file: Path, options: Options) -> List[Range]:
     subs = pysrt.open(in_file)
     batches = _split_into_batches(subs, options)
     assert batches[-1][-1] == subs[-1]
     ranges = []
     for batch in batches:
-        ranges.append((_to_seconds(batch[0].start), _to_seconds(batch[-1].end)))
-    _shift_batches(batches, options)
-    subs.save(out_file, encoding='utf-8')
-    _create_debug_subtitles(out_file, debug_sub_path, batches)
+        start = _to_seconds(batch[0].start)
+        end = _to_seconds(batch[-1].end)
+        ranges.append(Range(start, end, has_subtitle=True))
     return ranges
-
-
-def _create_debug_subtitles(in_file, out_file, batches):
-    needed = set()
-    ends = set()
-    subs = pysrt.open(in_file)
-    for batch in batches:
-        needed.add(batch[0].index)
-        needed.add(batch[-1].index)
-        ends.add(batch[-1].index)
-    for i, item in reversed(list(enumerate(subs))):
-        if item.index not in needed:
-            del subs[i]
-        elif item.index in ends:
-            item.text += " #END"
-    subs.save(out_file, encoding='utf-8')
 
 
 def _split_into_batches(subs: List[SubRipItem], options: Options) -> List[List[SubRipItem]]:
@@ -49,18 +32,6 @@ def _split_into_batches(subs: List[SubRipItem], options: Options) -> List[List[S
             current_batch = [sub]
     batches.append(current_batch)
     return list(itertools.chain.from_iterable(_justify(b, options.max_interval_length) for b in batches))
-
-
-def _shift_batches(batches: List[List[SubRipItem]], options: Options) -> None:
-    correction = 0
-    for batch in batches:
-        cur_dur = _get_length(batch[0], batch[-1])
-        if options.create_prefix:
-            correction += cur_dur
-        for item in batch:
-            item.shift(seconds=correction)
-        if options.create_suffix:
-            correction += cur_dur
 
 
 def _justify(intervals: List[SubRipItem], max_length: float) -> List[List[SubRipItem]]:

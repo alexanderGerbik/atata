@@ -28,7 +28,7 @@ def concat(sources: List[Path], destination: Path):
         )
 
 
-def cut_scenes(source_path: Path, destination_path: Path, scenes: Range, audio_index: int):
+def cut_scenes(source_path: Path, destination_path: Path, scenes: List[Range], audio_index: int):
     input = ffmpeg.input(source_path)
     n = len(scenes)
     video = input.video
@@ -50,7 +50,7 @@ def cut_scenes(source_path: Path, destination_path: Path, scenes: Range, audio_i
 def extract_subtitles(video_path: Path, sub_path: Path, sub_index: int):
     input = ffmpeg.input(video_path)
     subtitles = input[f's:{sub_index}']
-    out = ffmpeg.output(subtitles, str(sub_path))
+    out = ffmpeg.output(subtitles, str(sub_path)).overwrite_output()
     ffmpeg.run(out, capture_stdout=True, capture_stderr=True)
 
 

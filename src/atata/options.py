@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import List, Tuple
 
 
 @dataclass
@@ -10,4 +9,8 @@ class Options:
     create_suffix: bool = True
 
 
-Range = List[Tuple[float, float]]
+@dataclass
+class Range:
+    start: float
+    end: float
+    has_subtitle: bool = False
