@@ -34,11 +34,12 @@ def main():
     temp_dir_path = pathlib.Path(temp_dir.name)
     initial_sub_path = temp_dir_path / "initial.srt"
     final_sub_path = temp_dir_path / "final.srt"
+    debug_sub_path = source_video.parent / "debug.srt"
     temp_video = temp_dir_path / f"data{source_video.suffix}"
 
     metadata = ffmpeg.get_metadata(source_video)
     ffmpeg.extract_subtitles(source_video, initial_sub_path, sub_index)
-    ranges = subtitles.process_subtitles(initial_sub_path, final_sub_path, options)
+    ranges = subtitles.process_subtitles(initial_sub_path, final_sub_path, debug_sub_path, options)
     scenes = prepare_ranges(ranges, metadata.duration, options)
     cut_scenes_in_batches(source_video, temp_video, scenes, audio_index)
     ffmpeg.add_subtitles(temp_video, final_sub_path, destination_video)
