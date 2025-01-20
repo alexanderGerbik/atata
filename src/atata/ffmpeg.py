@@ -6,7 +6,7 @@ from typing import List
 
 import ffmpeg
 
-from .options import Range
+from .structures import Range
 
 
 @dataclass

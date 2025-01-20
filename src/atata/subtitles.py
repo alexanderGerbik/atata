@@ -6,7 +6,7 @@ from pathlib import Path
 import pysrt
 from pysrt import SubRipTime, SubRipItem
 
-from .options import Options, Range
+from .structures import Options, Range
 
 
 def process_subtitles(in_file: Path, options: Options) -> List[Range]:

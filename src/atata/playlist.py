@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import List
 from xml.etree import ElementTree as ET
 
-from .options import Range
+from .structures import Range
 
 file_caching_value = "300"
 

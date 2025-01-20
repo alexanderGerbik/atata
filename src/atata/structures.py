@@ -14,3 +14,11 @@ class Range:
     start: float
     end: float
     has_subtitle: bool = False
+
+
+@dataclass
+class VideoMetaData:
+    duration: float
+    video_stream_count: int
+    audio_stream_count: int
+    subtitle_stream_count: int

@@ -1,74 +1,74 @@
-from dataclasses import dataclass
+from enum import Enum
 from pathlib import Path
-from typing import List
+from typing import Optional
+
+import typer
+from typing_extensions import Annotated
 
 from . import ffmpeg, subtitles
-from .options import Options, Range
+from .ranges import prepare_ranges
+from .structures import Options, Range
 from .playlist import generate_playlist
 
-BATCH_THRESHOLD = 5
-MAX_INTERVAL_LENGTH = 30
 
-
-@dataclass
-class VideoMetaData:
-    duration: float
-    video_stream_count: int
-    audio_stream_count: int
-    subtitle_stream_count: int
+class Mode(str, Enum):
+    ata = "ata"
+    at = "at"
+    ta = "ta"
 
 
 def main():
-    source_video = Path("s05e17.mkv")
-    sub_index = 0
-    options = Options(
-        BATCH_THRESHOLD, MAX_INTERVAL_LENGTH, create_prefix=True, create_suffix=True
-    )
+    return typer.run(_main)
 
-    source_video = source_video.resolve()
+
+def _main(
+    source_video: Annotated[
+        Path,
+        typer.Argument(
+            exists=True,
+            file_okay=True,
+            dir_okay=False,
+            readable=True,
+            resolve_path=True,
+        ),
+    ],
+    mode: Mode = Mode.ata,
+    sub_index: int = None,
+    sub_path: Annotated[
+        Optional[Path],
+        typer.Option(
+            exists=True,
+            file_okay=True,
+            dir_okay=False,
+            readable=True,
+            resolve_path=True,
+        ),
+    ] = None,
+    dialog_gap_seconds: int = 5,
+    max_dialog_duration_seconds: int = 30,
+):
+    metadata = ffmpeg.get_metadata(source_video)
+    assert sub_index is None or 0 < sub_index <= metadata.subtitle_stream_count
+    assert sub_index is None or sub_path is None
+
+    options = Options(
+        dialog_gap_seconds,
+        max_dialog_duration_seconds,
+        create_prefix=mode.value.startswith("a"),
+        create_suffix=mode.value.endswith("a"),
+    )
     suffix = get_suffix(options)
-    sub_path = source_video.parent / f"{source_video.stem}{suffix}.srt"
     playlist_path = source_video.parent / f"{source_video.stem}{suffix}.xspf"
 
-    metadata = ffmpeg.get_metadata(source_video)
-    ffmpeg.extract_subtitles(source_video, sub_path, sub_index)
+    if sub_path is None:
+        if sub_index is None:
+            sub_index = metadata.subtitle_stream_count
+        sub_path = source_video.parent / f"{source_video.stem}{suffix}.srt"
+        ffmpeg.extract_subtitles(source_video, sub_path, sub_index-1)
+
     ranges = subtitles.process_subtitles(sub_path, options)
     ranges = prepare_ranges(ranges, metadata.duration, options)
     generate_playlist(ranges, source_video, sub_path, metadata.duration, playlist_path)
-
-
-def prepare_ranges(
-    ranges: List[Range], duration: float, options: options
-) -> List[Range]:
-    last_scene_end = 0
-    rv = []
-    for item in ranges:
-        rv.append(Range(last_scene_end, item.start))
-        if options.create_prefix:
-            rv.append(Range(item.start, item.end))
-        rv.append(Range(item.start, item.end, has_subtitle=True))
-        if options.create_suffix:
-            rv.append(Range(item.start, item.end))
-        last_scene_end = item.end
-    rv.append(Range(last_scene_end, duration))
-    rv = compress_ranges(rv)
-    return rv
-
-
-def compress_ranges(ranges: List[Range]) -> List[Range]:
-    rv = []
-    prev = None
-    for item in ranges:
-        if prev is None:
-            prev = item
-            continue
-        if prev.end == item.start and prev.has_subtitle == item.has_subtitle:
-            prev = Range(prev.start, item.end, item.has_subtitle)
-        else:
-            rv.append(prev)
-            prev = item
-    rv.append(prev)
-    return rv
 
 
 def get_suffix(options: Options):
