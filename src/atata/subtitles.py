@@ -1,5 +1,6 @@
 import datetime
 import itertools
+import re
 from typing import List
 from pathlib import Path
 
@@ -8,9 +9,12 @@ from pysrt import SubRipTime, SubRipItem
 
 from .structures import Options, Range
 
+_insignificant_subtitle_re = re.compile(r"♪|\[.*\]", re.DOTALL)
+
 
 def process_subtitles(in_file: Path, options: Options) -> List[Range]:
     subs = pysrt.open(in_file)
+    _filter_subtitles(subs)
     batches = _split_into_batches(subs, options)
     assert batches[-1][-1] == subs[-1]
     ranges = []
@@ -19,6 +23,12 @@ def process_subtitles(in_file: Path, options: Options) -> List[Range]:
         end = _to_seconds(batch[-1].end)
         ranges.append(Range(start, end, has_subtitle=True))
     return ranges
+
+
+def _filter_subtitles(subs):
+    for i, s in reversed(list(enumerate(subs))):
+        if _insignificant_subtitle_re.fullmatch(s.text_without_tags):
+            del subs[i]
 
 
 def _split_into_batches(subs: List[SubRipItem], options: Options) -> List[List[SubRipItem]]:
