@@ -25,11 +25,13 @@ def generate_playlist(
     ET.SubElement(root, "title").text = "Playlist"
     track_list = ET.SubElement(root, "trackList")
     id_list = _generate_extension_element(root)
+    accumulated_duration = 0
     for i, range in enumerate(ranges):
         track = ET.SubElement(track_list, "track")
         ET.SubElement(track, "location").text = f"file://{video_path}"
         ET.SubElement(track, "duration").text = str(int(duration))
-        ET.SubElement(track, "annotation").text = _generate_anotation(range)
+        accumulated_duration += range.end - range.start
+        ET.SubElement(track, "annotation").text = _generate_anotation(range, accumulated_duration)
         params_element = _generate_extension_element(track)
         ET.SubElement(params_element, "vlc:id").text = str(i)
         _add_option(params_element, "file-caching", file_caching_value)
@@ -55,11 +57,12 @@ def _format_time(seconds: float):
     return f"{seconds:.3f}"
 
 
-def _generate_anotation(range):
+def _generate_anotation(range, accumulated_duration):
     start = _humanize(range.start)
     end = _humanize(range.end)
+    accumulated_duration = _humanize(accumulated_duration)
     sub = "T" if range.has_subtitle else "A"
-    return f"{sub} {start}-{end}"
+    return f"{sub} {start}-{end}/{accumulated_duration}"
 
 
 def _humanize(time: float) -> str:
